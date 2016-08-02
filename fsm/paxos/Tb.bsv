@@ -1,6 +1,6 @@
 package Tb;
 
-typedef enum { IDLE, PHASE1A, PHASE1B, PHASE2A, PHASE2B, FINISH } State deriving (Bits, Eq);
+typedef enum { IDLE, PHASE1A, PHASE1B, PHASE2A, PHASE2B, VALUE_ERROR, FINISH } State deriving (Bits, Eq);
 
 (* synthesize *)
 module mkTb (Empty);
@@ -8,6 +8,7 @@ module mkTb (Empty);
 	Reg#(Bool) init <- mkReg(False);
 	Reg#(Bool) recv1b <- mkReg(False);
 	Reg#(Bool) recv2b <- mkReg(False);
+	Reg#(Bit#(256)) value <- mkReg('1);
 	PaxosIfc paxos <- mkPaxos(1, 2);
 
 	rule stateIdle ( state == IDLE );
@@ -45,7 +46,9 @@ module mkTb (Empty);
 
 	rule statePhase2B (state == PHASE2B);
 		$display("Received Phase2B messages");
-		let ret <- paxos.handle2B(1);
+		let ret <- paxos.handle2B(1, value);
+		if (ret != IDLE)
+			recv2b <= False;
 		state <= ret;
 	endrule
 
@@ -53,11 +56,16 @@ module mkTb (Empty);
 		$display("Paxos has finished");
 		$finish;
 	endrule
+
+	rule stateError (state == VALUE_ERROR);
+		$display("Accepted values are different");
+		$finish;
+	endrule
 endmodule: mkTb
 
 interface PaxosIfc;
 	method ActionValue#(State) handle1B(int bal);
-	method ActionValue#(State) handle2B(int bal);
+	method ActionValue#(State) handle2B(int bal, Bit#(256) val);
 endinterface: PaxosIfc
 
 (* synthesize *)
@@ -65,6 +73,7 @@ module mkPaxos#(parameter int init_ballot, parameter int qsize)(PaxosIfc);
 	Reg#(int) ballot <- mkReg(init_ballot);
 	Reg#(int) quorum <- mkReg(qsize);
 	Reg#(int) vballot <- mkReg(0);
+	Reg#(Bit#(256)) value <- mkReg(0);
 	Reg#(int) count1b <- mkReg(0);
 	Reg#(int) count2b <- mkReg(0);
 
@@ -84,17 +93,21 @@ module mkPaxos#(parameter int init_ballot, parameter int qsize)(PaxosIfc);
 		return ret;
 	endmethod
 
-	method ActionValue#(State) handle2B(int bal);
+	method ActionValue#(State) handle2B(int bal, Bit#(256) val);
 		State ret = IDLE;
 		if (bal >= ballot) begin
-			ballot <= bal;
-			vballot <= bal;
-			if (count2b == quorum - 1) begin
-				count2b <= count2b + 1;
-				ret = FINISH;
-			end
+			if ((value & val) != 0)
+				ret = VALUE_ERROR;
 			else begin
-				count2b <= count2b + 1;
+				ballot <= bal;
+				vballot <= bal;
+				if (count2b == quorum - 1) begin
+					count2b <= count2b + 1;
+					ret = FINISH;
+				end
+				else begin
+					count2b <= count2b + 1;
+				end
 			end
 		end
 		return ret;
