@@ -4,14 +4,11 @@ typedef enum { IDLE, PHASE1A, PHASE1B, PHASE2A, PHASE2B, FINISH } State deriving
 
 (* synthesize *)
 module mkTb (Empty);
-
 	Reg#(State) state <- mkReg(IDLE);
 	Reg#(Bool) init <- mkReg(False);
 	Reg#(Bool) recv1b <- mkReg(False);
 	Reg#(Bool) recv2b <- mkReg(False);
-	Reg#(int) count1b <- mkReg(0);
-	Reg#(int) count2b <- mkReg(0);
-	Reg#(int) quorum <- mkReg(2);
+	PaxosIfc paxos <- mkPaxos;
 
 	rule stateIdle ( state == IDLE );
 		if (!init) begin
@@ -28,7 +25,6 @@ module mkTb (Empty);
 	endrule
 
 	rule statePhase1A (state == PHASE1A);
-		$display("Sent Phase1A messages");
 		state <= IDLE;
 		recv1b <= True;
 		recv2b <= False;
@@ -36,12 +32,8 @@ module mkTb (Empty);
 
 	rule statePhase1B (state == PHASE1B);
 		$display("Received Phase1B messages");
-		if (count1b == quorum)
-			state <= PHASE2A;
-		else begin
-			state <= IDLE;
-			count1b <= count1b + 1;
-		end
+		let ret <- paxos.handle1B();
+		state <= ret;
 	endrule
 
 	rule  statePhase2A (state == PHASE2A);
@@ -53,17 +45,45 @@ module mkTb (Empty);
 
 	rule statePhase2B (state == PHASE2B);
 		$display("Received Phase2B messages");
-		if (count2b == quorum)
-			state <= FINISH;
-		else begin
-			state <= IDLE;
-			count2b <= count2b + 1;
-		end
+		let ret <- paxos.handle2B();
+		state <= ret;
 	endrule
 
 	rule stateFinish (state == FINISH);
 		$display("Paxos has finished");
 		$finish;
 	endrule
-endmodule
-endpackage
+endmodule: mkTb
+
+interface PaxosIfc;
+	method ActionValue#(State) handle1B();
+	method ActionValue#(State) handle2B();
+endinterface: PaxosIfc
+
+(* synthesize *)
+module mkPaxos(PaxosIfc);
+	Reg#(int) count1b <- mkReg(0);
+	Reg#(int) count2b <- mkReg(0);
+	Reg#(int) quorum <- mkReg(2);
+
+
+	method ActionValue#(State) handle1B();
+		if (count1b == quorum - 1)
+			return PHASE2A;
+		else begin
+			count1b <= count1b + 1;
+			return  IDLE;
+		end
+	endmethod
+
+	method ActionValue#(State) handle2B();
+		if (count2b == quorum - 1)
+			return FINISH;
+		else begin
+			count2b <= count2b + 1;
+			return IDLE;
+		end
+	endmethod
+endmodule: mkPaxos
+
+endpackage: Tb
