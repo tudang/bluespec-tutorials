@@ -4,7 +4,7 @@ INTERFACE=Tb
 all: compile convert run
 
 compile:
-	bsc -verilog ${BSV_FILE}
+	bsc -u -verilog ${BSV_FILE}
 convert:
 	bsc -o sim -e mk${INTERFACE} mk${INTERFACE}.v
 run:
