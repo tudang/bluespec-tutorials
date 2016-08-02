@@ -64,6 +64,7 @@ module mkTb (Empty);
 endmodule: mkTb
 
 interface PaxosIfc;
+	method ActionValue#(Tuple3#(State, Maybe#(int), Maybe#(Bit#(256)))) handle1A(int bal);
 	method ActionValue#(State) handle1B(int bal);
 	method ActionValue#(State) handle2B(int bal, Bit#(256) val);
 endinterface: PaxosIfc
@@ -72,11 +73,23 @@ endinterface: PaxosIfc
 module mkPaxos#(parameter int init_ballot, parameter int qsize)(PaxosIfc);
 	Reg#(int) ballot <- mkReg(init_ballot);
 	Reg#(int) quorum <- mkReg(qsize);
-	Reg#(int) vballot <- mkReg(0);
-	Reg#(Bit#(256)) value <- mkReg(0);
+	Reg#(int) vballot <- mkRegU;
+	Reg#(Bit#(256)) value <- mkRegU;
 	Reg#(int) count1b <- mkReg(0);
 	Reg#(int) count2b <- mkReg(0);
 
+
+	method ActionValue#(Tuple3#(State, Maybe#(int), Maybe#(Bit#(256)))) handle1A(int bal);
+		State ret = IDLE;
+		Maybe#(int) vbal = tagged Invalid;
+		Maybe#(Bit#(256)) val = tagged Invalid;
+		if (bal >= ballot) begin
+			ballot <= bal;
+			vbal = tagged Valid vballot;
+			val = tagged Valid value;
+		end
+		return tuple3(IDLE, vbal, val);
+	endmethod
 
 	method ActionValue#(State) handle1B(int bal);
 		State ret = IDLE;
@@ -96,11 +109,14 @@ module mkPaxos#(parameter int init_ballot, parameter int qsize)(PaxosIfc);
 	method ActionValue#(State) handle2B(int bal, Bit#(256) val);
 		State ret = IDLE;
 		if (bal >= ballot) begin
-			if ((value & val) != 0)
+			if ((value != 'haaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)
+				&& (value != val)) begin
 				ret = VALUE_ERROR;
+			end
 			else begin
 				ballot <= bal;
 				vballot <= bal;
+				value <= val;
 				if (count2b == quorum - 1) begin
 					count2b <= count2b + 1;
 					ret = FINISH;
