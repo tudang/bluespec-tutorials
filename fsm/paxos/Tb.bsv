@@ -1,6 +1,6 @@
 package Tb;
 
-typedef enum { IDLE, PHASE1A, PHASE1B, PHASE2A, PHASE2B, VALUE_ERROR, FINISH } State deriving (Bits, Eq);
+typedef enum { IDLE, PHASE1A, PHASE1B, PHASE2A, PHASE2B, ACCEPT, VALUE_ERROR, FINISH } State deriving (Bits, Eq);
 
 (* synthesize *)
 module mkTb (Empty);
@@ -66,6 +66,7 @@ endmodule: mkTb
 interface PaxosIfc;
 	method ActionValue#(Tuple3#(State, Maybe#(int), Maybe#(Bit#(256)))) handle1A(int bal);
 	method ActionValue#(State) handle1B(int bal);
+	method ActionValue#(State) handle2A(int bal, Bit#(256) val);
 	method ActionValue#(State) handle2B(int bal, Bit#(256) val);
 endinterface: PaxosIfc
 
@@ -102,6 +103,17 @@ module mkPaxos#(parameter int init_ballot, parameter int qsize)(PaxosIfc);
 			else begin
 				count1b <= count1b + 1;
 			end
+		end
+		return ret;
+	endmethod
+
+	method ActionValue#(State) handle2A(int bal, Bit#(256) val);
+		State ret = IDLE;
+		if (bal >= ballot) begin
+			ballot <= bal;
+			vballot <= bal;
+			value <= val;
+			ret = ACCEPT;
 		end
 		return ret;
 	endmethod
