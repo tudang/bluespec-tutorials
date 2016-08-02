@@ -8,7 +8,7 @@ module mkTb (Empty);
 	Reg#(Bool) init <- mkReg(False);
 	Reg#(Bool) recv1b <- mkReg(False);
 	Reg#(Bool) recv2b <- mkReg(False);
-	PaxosIfc paxos <- mkPaxos;
+	PaxosIfc paxos <- mkPaxos(1, 2);
 
 	rule stateIdle ( state == IDLE );
 		if (!init) begin
@@ -32,7 +32,7 @@ module mkTb (Empty);
 
 	rule statePhase1B (state == PHASE1B);
 		$display("Received Phase1B messages");
-		let ret <- paxos.handle1B();
+		let ret <- paxos.handle1B(1);
 		state <= ret;
 	endrule
 
@@ -45,7 +45,7 @@ module mkTb (Empty);
 
 	rule statePhase2B (state == PHASE2B);
 		$display("Received Phase2B messages");
-		let ret <- paxos.handle2B();
+		let ret <- paxos.handle2B(1);
 		state <= ret;
 	endrule
 
@@ -56,33 +56,48 @@ module mkTb (Empty);
 endmodule: mkTb
 
 interface PaxosIfc;
-	method ActionValue#(State) handle1B();
-	method ActionValue#(State) handle2B();
+	method ActionValue#(State) handle1B(int bal);
+	method ActionValue#(State) handle2B(int bal);
 endinterface: PaxosIfc
 
 (* synthesize *)
-module mkPaxos(PaxosIfc);
+module mkPaxos#(parameter int init_ballot, parameter int qsize)(PaxosIfc);
+	Reg#(int) ballot <- mkReg(init_ballot);
+	Reg#(int) quorum <- mkReg(qsize);
+	Reg#(int) vballot <- mkReg(0);
 	Reg#(int) count1b <- mkReg(0);
 	Reg#(int) count2b <- mkReg(0);
-	Reg#(int) quorum <- mkReg(2);
 
 
-	method ActionValue#(State) handle1B();
-		if (count1b == quorum - 1)
-			return PHASE2A;
-		else begin
-			count1b <= count1b + 1;
-			return  IDLE;
+	method ActionValue#(State) handle1B(int bal);
+		State ret = IDLE;
+		if (bal >= ballot) begin
+			ballot <= bal;
+			if (count1b == quorum - 1) begin
+				count1b <= count1b + 1;
+				ret = PHASE2A;
+			end
+			else begin
+				count1b <= count1b + 1;
+			end
 		end
+		return ret;
 	endmethod
 
-	method ActionValue#(State) handle2B();
-		if (count2b == quorum - 1)
-			return FINISH;
-		else begin
-			count2b <= count2b + 1;
-			return IDLE;
+	method ActionValue#(State) handle2B(int bal);
+		State ret = IDLE;
+		if (bal >= ballot) begin
+			ballot <= bal;
+			vballot <= bal;
+			if (count2b == quorum - 1) begin
+				count2b <= count2b + 1;
+				ret = FINISH;
+			end
+			else begin
+				count2b <= count2b + 1;
+			end
 		end
+		return ret;
 	endmethod
 endmodule: mkPaxos
 
