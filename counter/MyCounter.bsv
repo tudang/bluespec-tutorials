@@ -9,27 +9,29 @@ interface CounterRequest;
 	method Action increment();
 endinterface
 
-interface Counter;
+interface MyCounter;
 	interface CounterRequest request;
 endinterface
 
 
-module mkCounter#(CounterIndication indication)(Counter);
+module mkMyCounter#(CounterIndication indication)(MyCounter);
+	FIFO#(Bit#(32)) delay <- mkSizedFIFO(8);
 	Reg#(Bit#(32)) value <- mkReg(0);
-	PulseWire read_called <- mkPulseWire();
 
-	rule heard(read_called);
-		indication.heard(value);
+	rule respond;
+		delay.deq;
+		indication.heard(delay.first);
 	endrule
 
 	interface CounterRequest request;
 		method Action load(Bit#(32) newval);
 			value <= newval;
-			read_called.send();
+			delay.enq(newval);
 		endmethod
 
 		method Action increment();
 			value <= value + 1;
+			delay.enq(value+1);
 		endmethod
 
 	endinterface

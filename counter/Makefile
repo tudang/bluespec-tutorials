@@ -1,8 +1,8 @@
-CONNECTALDIR=../../connectal
-S2H_INTERFACES = CounterRequest:Counter.request
-H2S_INTERFACES = Counter:CounterIndication
+CONNECTALDIR=/opt/connectal
+S2H_INTERFACES = CounterRequest:MyCounter.request
+H2S_INTERFACES = MyCounter:CounterIndication
 
-BSVFILES = Counter.bsv
+BSVFILES = MyCounter.bsv
 CPPFILES = testCounter.cpp
 
 include $(CONNECTALDIR)/Makefile.connectal

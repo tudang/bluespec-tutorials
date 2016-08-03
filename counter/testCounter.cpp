@@ -17,6 +17,18 @@ public:
 	CounterIndication(unsigned int id) : CounterIndicationWrapper(id) {}
 };
 
+static void call_load(int v) {
+	printf("[%s, %d] %d\n", __FUNCTION__, __LINE__, v);
+	counterRequestProxy->load(v);
+	sem_wait(&mutex);
+}
+
+static void call_increment() {
+	printf("[%s, %d]\n", __FUNCTION__, __LINE__);
+	counterRequestProxy->increment();
+	sem_wait(&mutex);
+}
+
 int main(int argc, char *argv[])
 {
 	long actualFrequency = 0;
@@ -33,10 +45,10 @@ int main(int argc, char *argv[])
 			status, errno);
 
 	int v = 42;
-	printf("load %d\n", v);
-	counterRequestProxy->load(v);
-	sem_wait(&mutex);
 
+	call_load(v);
+	call_increment();
+	
 	return 0;
 }
 
