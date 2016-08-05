@@ -1,1 +1,1 @@
-#Connectal Tutorials
+Bluespec and connectal framework tutorials
