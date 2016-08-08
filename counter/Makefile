@@ -1,8 +1,14 @@
-CONNECTALDIR=/opt/connectal
-S2H_INTERFACES = CounterRequest:MyCounter.request
-H2S_INTERFACES = MyCounter:CounterIndication
+#BSV_FILE=TbCounter.bsv
+BSV_FILE=TbCounterFSM.bsv
+INTERFACE=TbCounterFSM
 
-BSVFILES = MyCounter.bsv
-CPPFILES = testCounter.cpp
+all: compile convert run
 
-include $(CONNECTALDIR)/Makefile.connectal
+compile:
+	bsc -u -verilog ${BSV_FILE}
+convert:
+	bsc -o sim -e mk${INTERFACE} mk${INTERFACE}.v
+run:
+	./sim
+clean:
+	rm -rf sim *.v *.bo
