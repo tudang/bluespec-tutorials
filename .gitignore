@@ -1,5 +1,7 @@
 *.swp
 *bluesim
-*sim
+*sim*
 *.bo
 *.v
+webtalk*
+xelab*
