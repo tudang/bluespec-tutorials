@@ -10,4 +10,4 @@ convert:
 run:
 	./sim
 clean:
-	rm -rf sim *.v *.bo
+	rm -rf *sim* *.v *.bo webtalk* *xelab*
