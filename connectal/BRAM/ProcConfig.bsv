@@ -1,0 +1,2 @@
+`define CONNECTAL_MEMORY
+`define OUT_OF_ORDER
