@@ -1,13 +1,16 @@
 BSV_FILE=Tb.bsv
 INTERFACE=Tb
 
-all: compile convert run
+all: run
 
-compile:
-	bsc -verilog ${BSV_FILE}
-convert:
-	bsc -o sim -e mk${INTERFACE} mk${INTERFACE}.v
-run:
+mk${INTERFACE$}.v: ${BSV_FILE}
+	bsc -verilog $<
+
+sim: mk${INTERFACE}.v
+	bsc -o sim -e mk${INTERFACE} $<
+
+run: sim
 	./sim
+
 clean:
-	rm -rf sim *.v *.bo
+	rm -rf sim* *.v *.bo xsim.dir xelab* webtalk* xsim* .Xil

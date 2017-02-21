@@ -1,4 +1,4 @@
-CONNECTALDIR=/opt/connectal
+CONNECTALDIR?=/opt/connectal
 S2H_INTERFACES = CounterRequest:MyCounter.request
 H2S_INTERFACES = MyCounter:CounterIndication
 
